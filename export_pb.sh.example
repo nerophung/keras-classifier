@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+export KERAS_MODEL_PATH=""
+export PB_OUTPUT_PATH=""
+
+python ./export_pb.py --input_model="${KERAS_MODEL_PATH}" \
+                      --output_model="${PB_OUTPUT_PATH}" \
