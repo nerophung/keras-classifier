@@ -150,7 +150,7 @@ def prepare_data_in_tfrecord_format(train, output_dir, split_name='train',
 
 def convert_dataset_to_tfrecords(dataset_dir, data_dir,
                                  ratio_train_data=1, output_file_prefix='', duplicate_training_data=True,
-                                 use_slim_framework=True, verbose=True, num_tf_file=10, num_threads=3, version=1):
+                                 use_slim_framework=True, verbose=True, num_tf_file=10, num_threads=3):
     print("Started converting data from '%s' directory to tfrecord format" % dataset_dir)
 
     class_names = sorted(os.listdir(dataset_dir))
@@ -169,8 +169,7 @@ def convert_dataset_to_tfrecords(dataset_dir, data_dir,
     else:
         train_data_dir = os.path.join(data_dir, 'train')
     prepare_data_in_tfrecord_format(train, train_data_dir, split_name='train', output_file_prefix=output_file_prefix,
-                             ratio_examples_each_class=1, duplicate=duplicate_training_data, verbose=verbose,
-                             num_tf_file=num_tf_file, num_threads=num_threads, version=version)
+                             ratio_examples_each_class=1, duplicate=duplicate_training_data, verbose=verbose)
     print("Done")
 
     # Prepare tfrecord files for validation data
@@ -181,9 +180,7 @@ def convert_dataset_to_tfrecords(dataset_dir, data_dir,
         validation_data_dir = os.path.join(data_dir, 'validation')
     prepare_data_in_tfrecord_format(val, validation_data_dir, split_name='validation',
                              output_file_prefix=output_file_prefix,
-                             ratio_examples_each_class=1, duplicate=duplicate_training_data, verbose=verbose,
-                             num_tf_file=num_tf_file,
-                             num_threads=num_threads, version=version)
+                             ratio_examples_each_class=1, duplicate=duplicate_training_data, verbose=verbose)
     print("Done")
 
 

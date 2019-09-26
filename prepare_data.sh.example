@@ -1,0 +1,12 @@
+#!/bin/bash
+export DATASET_DIR=""
+export DATA_TF_DIR=""`date +"%Y%m%d%H%M"`_digits_lenet5
+mkdir -p ${DATA_DIR}
+python prepare_tfrecord.py --dataset_dir=${DATASET_DIR} \
+                                --data_dir=${DATA_TF_DIR} \
+                                --ratio_train_data=0.9 \
+                                --use_slim_framework=True \
+                                --verbose=True \
+                                --version=1 \
+                                --num_threads=4 \
+                                --num_tf_afile=10
