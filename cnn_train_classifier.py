@@ -5,6 +5,7 @@ import tensorflow as tf
 from lib.model_utils import init_loss, init_optimizers
 from nets.lenet.lenet5 import LeNet5, TrongNet
 from tensorflow.python import keras
+from tensorflow.python.keras.applications.inception_resnet_v2 import InceptionResNetV2
 import os
 import glob
 import numpy as np
@@ -20,7 +21,7 @@ tf.app.flags.DEFINE_integer('image_size', 100, 'Size of image.')
 tf.app.flags.DEFINE_string('split_train_name', 'train-*.tfrecord', 'Name for split dataset.')
 tf.app.flags.DEFINE_string('split_validation_name', 'validation-*.tfrecord', 'Name for split dataset.')
 tf.app.flags.DEFINE_string('output_file_name', 'final_models.hdf5', 'Name of output file.')
-tf.app.flags.DEFINE_string('checkpoint_pattern', 'weights-{epoch:02d}-{acc:.2f}.hdf5',
+tf.app.flags.DEFINE_string('checkpoint_pattern', 'weights-{epoch:02d}-{acc:.2f}-{val_acc:.2f}.hdf5',
                            'Checkpoint pattern for saving')
 # Training configurations
 tf.app.flags.DEFINE_float('validation_split', None, 'Ratio of validation data.')
@@ -75,7 +76,8 @@ def load_data(dataset_dir, pattern):
 
 def get_data_augment():
     data_augment = keras.preprocessing.image.ImageDataGenerator(
-        width_shift_range=0.2
+        width_shift_range=0.2,
+        zoom_range=0.2
     )
     return data_augment
 
@@ -83,6 +85,7 @@ def get_data_augment():
 def main(_):
     # Log configurations of FLAGS
     model = TrongNet((50, 50, 1), FLAGS.num_classes, FLAGS.pretrained_weights)
+    # model.load_weights('/media/trongpq/HDD/callbacks/lotery/201909271141_lenet5/final_models.hdf5')
     log_file = os.path.join(FLAGS.output_dir, 'config.txt')
     if not os.path.isdir(FLAGS.dataset_dir):
         raise FileExistsError('Directory {} is not exits'.format(FLAGS.dataset_dir))
@@ -90,23 +93,24 @@ def main(_):
         for key, value in FLAGS.flag_values_dict().items():
             log.writelines("{} : {}\n".format(key, value))
         with tf.Session() as sess:
-            print('Load data training:')
-            training_data = load_data(FLAGS.dataset_dir, FLAGS.split_train_name)
-            images_train, labels_train = sess.run(training_data)
-            images_train = np.array(images_train)
-            labels_train = np.array(labels_train)
-            print('Total records for training: {}'.format(images_train.shape[0]))
-            log.writelines('Training data: {}\n'.format(images_train.shape[0]))
-            print('Loading data validating...')
-            validating_data = load_data(FLAGS.dataset_dir, FLAGS.split_validation_name)
-            images_val, labels_val = sess.run(validating_data)
-            labels_val = np.array(labels_val)
-            images_val = np.array(images_val)
-            print('Total records for validating: {}'.format(images_val.shape[0]))
-            log.writelines('Validating data: {}\n'.format(images_val.shape[0]))
+            # print('Load data training:')
+            # training_data = load_data(FLAGS.dataset_dir, FLAGS.split_train_name)
+            # images_train, labels_train = sess.run(training_data)
+            # images_train = np.array(images_train)
+            # labels_train = np.array(labels_train)
+            # print('Total records for training: {}'.format(images_train.shape[0]))
+            # log.writelines('Training data: {}\n'.format(images_train.shape[0]))
+            # print('Loading data validating...')
+            # validating_data = load_data(FLAGS.dataset_dir, FLAGS.split_validation_name)
+            # images_val, labels_val = sess.run(validating_data)
+            # labels_val = np.array(labels_val)
+            # images_val = np.array(images_val)
+            # print('Total records for validating: {}'.format(images_val.shape[0]))
+            # log.writelines('Validating data: {}\n'.format(images_val.shape[0]))
             model.summary(print_fn=lambda x: log.write(x + '\n'))
     optimizer = None
     loss = None
+    
     try:
         # Get optimizer
         optimizer = init_optimizers(FLAGS.optimizer, FLAGS.lr)
@@ -127,15 +131,38 @@ def main(_):
 
     if FLAGS.using_augmentation:
         data_augment = get_data_augment()
-        data_augment.fit(images_train)
-        model.fit_generator(data_augment.flow(images_train, labels_train, batch_size=FLAGS.batch_size),
-                            steps_per_epoch=len(images_train) // FLAGS.batch_size, epochs=FLAGS.epochs,
-                            verbose=1, callbacks=callbacks_list, validation_data=(images_val, labels_val),
-                            validation_steps=len(images_val) // FLAGS.batch_size)
-    else:
-        model.fit(images_train, labels_train, batch_size=FLAGS.batch_size, epochs=FLAGS.epochs,
-                  callbacks=callbacks_list, validation_split=FLAGS.validation_split,
-                  validating_data=(images_val, labels_val), verbose=1)
+        train_generator = data_augment.flow_from_directory(
+            '/media/trongpq/HDD/dataset/lotery/images/digits/train',
+            target_size=(50, 50),
+            color_mode='grayscale',
+            batch_size=FLAGS.batch_size,
+            class_mode='categorical'
+        )
+        validation_generator = data_augment.flow_from_directory(
+            '/media/trongpq/HDD/dataset/lotery/images/digits/validation',
+            target_size=(50, 50),
+            color_mode='grayscale',
+            batch_size=FLAGS.batch_size,
+            class_mode='categorical'
+        )
+        # data_augment.fit(images_train)
+        # model.fit_generator(data_augment.flow(images_train, labels_train, batch_size=FLAGS.batch_size),
+        #                     steps_per_epoch=len(images_train) // FLAGS.batch_size, epochs=FLAGS.epochs,
+        #                     verbose=1, callbacks=callbacks_list, validation_data=(images_val, labels_val),
+        #                     validation_steps=len(images_val) // FLAGS.batch_size)
+        model.fit_generator(
+            train_generator,
+            steps_per_epoch=560,
+            epochs=FLAGS.epochs,
+            validation_data=validation_generator,
+            validation_steps=16,
+            callbacks=callbacks_list,
+            verbose=1
+        )
+    # else:
+    #     model.fit(images_train, labels_train, batch_size=FLAGS.batch_size, epochs=FLAGS.epochs,
+    #               callbacks=callbacks_list, validation_split=FLAGS.validation_split,
+    #               validating_data=(images_val, labels_val), verbose=1)
 
     model.save(os.path.join(FLAGS.output_dir, FLAGS.output_file_name))
     print('Model is saved!')
